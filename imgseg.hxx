@@ -12,16 +12,16 @@ using namespace std;
 
 struct Pixel
 {
-  char R, G, B;
-  void set(char r, char g, char b);
+  int R, G, B;
+  void set(int r, int g, int b);
 };
 
 
 struct Node
 {
   double degree = 0;
-  double transitions[6] = {};
-  Node *neighbours[6] = {};
+  double transitions[4] = {};
+  Node *neighbours[4] = {};
   vector<double> buffer = {};
   vector<double> probabilities = {};
   int label = 0;
@@ -29,6 +29,7 @@ struct Node
 
   void calcDegree();
   void init(int labelCount);
+  void set(int lbl);
   void reset();
   void update();
   void swap();
@@ -64,23 +65,23 @@ class Graph
 
   Graph() {}
   ~Graph() {}
+  
+  Graph(int height, int width, double beta);
 
-  Graph(int height, int width, int depth, double beta);
-
-  void setImg(vector<vector<vector<int>>> px);
-  void setSeeds(vector<vector<int>> lbls);
-  bool isLegal(int i, int j, int k);
-  int getNode(int i, int j, int k);
-  int getNeighbour(int i, int j, int k, int dir);
-  double calcProb(const Pixel& pixelA, const Pixel& pixelB);
+  void setImg(vector<vector<int>> px);
+  void setSeeds(vector<vector<int>> lbls, vector<int> seeds);
+  bool isLegal(int i, int j);
+  int getNode(int i, int j);
+  int getNeighbour(int i, int j, int dir);
+  double calcProb(Pixel pixelA, Pixel pixelB);
   void createTransitions();
   void reset();
   void process(Mode mode, int itCount);
   void randomWalks();
   void directSolver();
   void cellular(int itCount);
-  vector<vector<int>> getSegImg(int depth);
-  vector<vector<int>> getSegImgChannel(int label, int depth);
+  vector<vector<int>> getSegImg();
+  vector<vector<int>> getSegImgChannel(int label);
 };  
 
 

@@ -10,6 +10,7 @@
 
 namespace std {
   %template(VectorInt) vector<int>;
+  %template(VectorDouble) vector<double>;
   %template(VectorInt2D) vector<vector<int>>;
   %template(VectorInt3D) vector<vector<vector<int>>>;
   %template(VectorNode) vector<Node>;

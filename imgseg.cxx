@@ -24,7 +24,7 @@ struct Node;
 struct Pixel;
 	
 
-void Pixel::set(char r, char g, char b)
+void Pixel::set(int r, int g, int b)
 {
   R = r;
   G = g;
@@ -35,7 +35,7 @@ void Pixel::set(char r, char g, char b)
 void Node::calcDegree()
 {
   degree = 0;
-  for(int i = 0; i < 6; i++)
+  for(int i = 0; i < 4; i++)
     {
       if(neighbours[i] != nullptr)
 	degree += transitions[i];
@@ -44,18 +44,20 @@ void Node::calcDegree()
 	
 void Node::init(int labelCount)
 {
-  if(isSeed)
-    {
-      probabilities.resize(labelCount, 0);
-      probabilities[label] = 1;
-    }
-  else
-    {
-      probabilities.resize(labelCount, 1. / labelCount);
-    }
+  probabilities.resize(labelCount, 1. / labelCount);
   buffer = probabilities;
 }
-	
+
+void Node::set(int lbl)
+{
+  isSeed = lbl == -1 ? false : true;
+  if(lbl == -1)
+    return;
+  for(int i = 0; i < probabilities.size(); i++)
+    probabilities[i] = 0;
+  probabilities[lbl] = 1;
+}
+
 void Node::reset()
 {
   if(isSeed)
@@ -78,7 +80,7 @@ void Node::update()
   for(int i = 0; i < buffer.size() - 1; i++)
     {
       buffer[i] = 0;
-      for(int j = 0; j < 6; j++)
+      for(int j = 0; j < 4; j++)
 	{
 	  if(neighbours[j] != nullptr)
 	    {
@@ -107,86 +109,63 @@ void Node::swap()
   probabilities.swap(buffer);
 }
 
-
-Graph::Graph(int height, int width, int depth, double beta)
-  :height(height), width(width), depth(depth), beta(beta)
+Graph::Graph(int height, int width, double beta)
+  :height(height), width(width), beta(beta)
 {
-  pixels = vector<Pixel>(height * width * depth);
-  nodes = vector<Node>(height * width * depth);
+  pixels = vector<Pixel>(height * width);
+  nodes = vector<Node>(height * width);
 }
 	
-void Graph::setImg(vector<vector<vector<int>>> px)
+void Graph::setImg(vector<vector<int>> px)
 {
-  for(int i = 0; i < depth; i++)
+  for(int i = 0; i < height * width; i++)
     {
-      for(int j = 0; j < height * width; j++)
-	{
-	  pixels[j + height * width * i].set(px[i][j][0], px[i][j][0], px[i][j][0]);
-	}
+      pixels[i].set(px[i][0], px[i][1], px[i][2]);
     }
 }	
 	
-void Graph::setSeeds(vector<vector<int>> lbls)
+void Graph::setSeeds(vector<vector<int>> lbls, vector<int> seeds)
 {
-  labels.resize(lbls.size());
+  int labelCount = lbls.size();
+  labels.resize(labelCount);
   for(int i = 0; i < labels.size(); i++)
     {
       labels[i].set(lbls[i][0], lbls[i][1], lbls[i][2]);
     }
-  //
-  //		for (int i = 0; i < height * width * depth; i++)
-  //		{
-  //			Uint32 pixel = pixels[i];
-  //			if ((pixel & fmt->Amask) == 0)
-  //			{
-  //				nodes[i].label = -1;
-  //				continue;
-  //			}
-  //			
-  //			Uint8 lbl;
-  //			for (lbl = 0; lbl < labels.size() && pixel != labels[lbl]; lbl++) {}
-  //			if (lbl == labels.size())
-  //				labels.push_back(pixel);
-  //				
-  //			nodes[i].isSeed = true;
-  //			nodes[i].label = lbl;
-  //		}
-  //		
-  //		labelCount = labels.size();
-  //		
-  //		for(int i = 0; i < height * width * depth; i++)
-  //		{
-  //			nodes[i].init(labelCount);
-  //		}
+
+  
+  for(int i = 0; i < height * width; i++)
+    {
+      nodes[i].init(labelCount);
+      nodes[i].set(seeds[i]);
+    }
 }	
 	
-bool Graph::isLegal(int i, int j, int k)
+bool Graph::isLegal(int i, int j)
 {
-  return i >= 0 && i < height && j >= 0 && j < width && k >= 0 && k < depth;
+  return i >= 0 && i < height && j >= 0 && j < width;
 }
 	
-int Graph::getNode(int i, int j, int k)
+int Graph::getNode(int i, int j)
 {
-  if(!isLegal(i, j, k))
+  if(!isLegal(i, j))
     return -1;
-  return j + width * i + height*width * k;
+  return j + width * i;
 }
 	
-int Graph::getNeighbour(int i, int j, int k, int dir)
+int Graph::getNeighbour(int i, int j, int dir)
 {		
   switch(dir)
     {
-    case 0: return getNode(i, j + 1, k);
-    case 1: return getNode(i + 1, j, k);
-    case 2: return getNode(i, j - 1, k);
-    case 3: return getNode(i - 1, j, k);
-    case 4: return getNode(i, j, k + 1);
-    case 5: return getNode(i, j, k - 1);
+    case 0: return getNode(i, j + 1);
+    case 1: return getNode(i + 1, j);
+    case 2: return getNode(i, j - 1);
+    case 3: return getNode(i - 1, j);
     default: return -1;
     }
 }
 	
-double Graph::calcProb(const Pixel& pixelA, const Pixel& pixelB)
+double Graph::calcProb(Pixel pixelA, Pixel pixelB)
 {
   int dR = (int)pixelA.R - (int)pixelB.R;
   int dG = (int)pixelA.G - (int)pixelB.G;
@@ -203,49 +182,36 @@ void Graph::createTransitions()
     {
       for (int j = 0; j < width; j++)
 	{
-	  for(int k = 0; k < depth; k++)
+	  int n = getNode(i, j);
+					
+	  int neigh = getNeighbour(i, j, 0);
+	  if (neigh >= 0)
 	    {
-	      int n = getNode(i, j, k);
-					
-	      int neigh = getNeighbour(i, j, k, 0);
-	      if (neigh >= 0)
-		{
-		  double transition = calcProb(pixels[n], pixels[neigh]);
-		  nodes[n].transitions[0] = transition;
-		  nodes[n].neighbours[0] = &nodes[neigh];
-		  nodes[neigh].transitions[2] = transition;
-		  nodes[neigh].neighbours[2] = &nodes[n];
-		}
-					
-	      neigh = getNeighbour(i, j, k, 1);
-	      if (neigh >= 0)
-		{
-		  double transition = calcProb(pixels[n], pixels[neigh]);
-		  nodes[n].transitions[1] = transition;
-		  nodes[n].neighbours[1] = &nodes[neigh];
-		  nodes[neigh].transitions[3] = transition;
-		  nodes[neigh].neighbours[3] = &nodes[n];
-		}
-					
-	      neigh = getNeighbour(i, j, k, 4);
-	      if (neigh >= 0)
-		{
-		  double transition = calcProb(pixels[n], pixels[neigh]);
-		  nodes[n].transitions[4] = transition;
-		  nodes[n].neighbours[4] = &nodes[neigh];
-		  nodes[neigh].transitions[5] = transition;
-		  nodes[neigh].neighbours[5] = &nodes[n];
-		}
-					
-	      nodes[n].calcDegree();
+	      double transition = calcProb(pixels[n], pixels[neigh]);
+	      nodes[n].transitions[0] = transition;
+	      nodes[n].neighbours[0] = &nodes[neigh];
+	      nodes[neigh].transitions[2] = transition;
+	      nodes[neigh].neighbours[2] = &nodes[n];
 	    }
+					
+	  neigh = getNeighbour(i, j, 1);
+	  if (neigh >= 0)
+	    {
+	      double transition = calcProb(pixels[n], pixels[neigh]);
+	      nodes[n].transitions[1] = transition;
+	      nodes[n].neighbours[1] = &nodes[neigh];
+	      nodes[neigh].transitions[3] = transition;
+	      nodes[neigh].neighbours[3] = &nodes[n];
+	    }
+					
+	  nodes[n].calcDegree();
 	}
     }
 }
 	
 void Graph::reset()
 {
-  for(int i = 0; i < height * width * depth; i++)
+  for(int i = 0; i < height * width; i++)
     {
       nodes[i].reset();
     }
@@ -291,24 +257,23 @@ void Graph::cellular(int itCount)
 {		
   while (itCount-- > 0)
     {
-      for (int i = 0; i < height * width * depth; i++)
+      for (int i = 0; i < height * width; i++)
 	{
 	  nodes[i].update();
 	}
 			
-      for (int i = 0; i < height * width * depth; i++)
+      for (int i = 0; i < height * width; i++)
 	{
 	  nodes[i].swap();
 	}
     }
 }
 	
-vector<vector<int>> Graph::getSegImg(int depth=0)
+vector<vector<int>> Graph::getSegImg()
 {
   vector<vector<int>> px = vector<vector<int>>(height * width, vector<int>(4));
   for (int i = 0; i < height * width; i++)
     {
-      int n = i + height * width * depth;
       px[i][0] = labels[nodes[i].label].R;
       px[i][1] = labels[nodes[i].label].G;
       px[i][2] = labels[nodes[i].label].B;
@@ -317,12 +282,11 @@ vector<vector<int>> Graph::getSegImg(int depth=0)
   return px;
 }
 	
-vector<vector<int>> Graph::getSegImgChannel(int label, int depth=0)
+vector<vector<int>> Graph::getSegImgChannel(int label)
 {		
   vector<vector<int>> px = vector<vector<int>>(height * width, vector<int>(4));
   for(int i = 0; i < height * width; i++)
     {
-      int n = i + height * width * depth;
       px[i][0] = labels[nodes[i].label].R;
       px[i][1] = labels[nodes[i].label].G;
       px[i][2] = labels[nodes[i].label].B;
