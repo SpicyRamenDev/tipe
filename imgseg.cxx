@@ -53,6 +53,7 @@ void Node::set(int lbl)
   isSeed = lbl == -1 ? false : true;
   if(lbl == -1)
     return;
+  label = lbl;
   for(int i = 0; i < probabilities.size(); i++)
     probabilities[i] = 0;
   probabilities[lbl] = 1;
@@ -290,7 +291,7 @@ vector<vector<int>> Graph::getSegImgChannel(int label)
       px[i][0] = labels[nodes[i].label].R;
       px[i][1] = labels[nodes[i].label].G;
       px[i][2] = labels[nodes[i].label].B;
-      px[i][3] = (char)(nodes[i].probabilities[label] * 255);
+      px[i][3] = (int)(nodes[i].probabilities[label] * 255);
     }
   return px;
 }

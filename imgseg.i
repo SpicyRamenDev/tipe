@@ -13,6 +13,8 @@ namespace std {
   %template(VectorDouble) vector<double>;
   %template(VectorInt2D) vector<vector<int>>;
   %template(VectorInt3D) vector<vector<vector<int>>>;
+  %template(VectorChar) vector<unsigned char>;
+  %template(VectorChar2D) vector<vector<unsigned char>>;
   %template(VectorNode) vector<Node>;
   %template(VectorPixel) vector<Pixel>;
 };
