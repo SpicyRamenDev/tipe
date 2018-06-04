@@ -5,9 +5,6 @@
 
 %{
 #define SWIG_FILE_WITH_INIT
-#include <Eigen/Core>
-#include <Eigen/Sparse>
-#include <Eigen/Dense>
 #include "imgseg.hxx"
 %}
 
@@ -20,9 +17,6 @@ namespace std {
   %template(VectorChar2D) vector<vector<unsigned char>>;
   %template(VectorNode) vector<Node>;
   %template(VectorPixel) vector<Pixel>;
-  %template(VectorVector) vector<Eigen::VectorXd>;
 };
-%include <Eigen/Core>
-%include <Eigen/Sparse>
-%include <Eigen/Dense>
+
 %include "imgseg.hxx"
