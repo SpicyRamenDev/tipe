@@ -1,5 +1,3 @@
-#include <Eigen/Sparse>
-
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -22,7 +20,7 @@ mt19937 rng;
 class Graph;
 struct Node;
 struct Pixel;
-	
+
 
 void Pixel::set(int r, int g, int b)
 {
@@ -41,7 +39,7 @@ void Node::calcDegree()
 	degree += transitions[i];
     }
 }
-	
+
 void Node::init(int labelCount)
 {
   probabilities.resize(labelCount, 1. / labelCount);
@@ -63,21 +61,21 @@ void Node::reset()
 {
   if(isSeed)
     return;
-		
+
   double p = 1. / probabilities.size();
   for(int i = 0; i < probabilities.size(); i++)
     {
       probabilities[i] = p;
     }
 }
-	
+
 void Node::update()
 {
   if(isSeed)
     return;
-		
+
   double total = 0;
-			
+
   for(int i = 0; i < buffer.size() - 1; i++)
     {
       buffer[i] = 0;
@@ -88,23 +86,28 @@ void Node::update()
 	      buffer[i] += transitions[j] * neighbours[j]->probabilities[i] / degree;
 	    }
 	}
-			
+
       total += buffer[i];
     }
-		
+
   buffer[buffer.size() - 1] = 1 - total;
-		
+}
+
+void Node::calcLabel()
+{
+  if(isSeed)
+    return;
   double maxP = 0;
-  for(int i = 0; i < buffer.size(); i++)
+  for(int i = 0; i < probabilities.size(); i++)
     {
-      if(buffer[i] > maxP)
+      if(probabilities[i] > maxP)
 	{
-	  maxP = buffer[i];
+	  maxP = probabilities[i];
 	  label = i;
 	}
     }
 }
-	
+
 void Node::swap()
 {
   probabilities.swap(buffer);
@@ -115,47 +118,60 @@ Graph::Graph(int height, int width, double beta)
 {
   pixels = vector<Pixel>(height * width);
   nodes = vector<Node>(height * width);
+  for(int i = 0; i < height * width; i++)
+    nodes[i].index = i;
 }
-	
+
 void Graph::setImg(vector<vector<int>> px)
 {
   for(int i = 0; i < height * width; i++)
     {
       pixels[i].set(px[i][0], px[i][1], px[i][2]);
     }
-}	
-	
+}
+
 void Graph::setSeeds(vector<vector<int>> lbls, vector<int> seeds)
 {
-  int labelCount = lbls.size();
+  labelCount = lbls.size();
   labels.resize(labelCount);
   for(int i = 0; i < labels.size(); i++)
     {
       labels[i].set(lbls[i][0], lbls[i][1], lbls[i][2]);
     }
 
-  
+  seededCount = 0;
+  unseededCount = 0;
   for(int i = 0; i < height * width; i++)
     {
       nodes[i].init(labelCount);
       nodes[i].set(seeds[i]);
+      if(seeds[i] == -1)
+	{
+	  nodes[i].cmpIndex = unseededCount;
+	  unseededCount++;
+	}
+      else
+	{
+	  nodes[i].cmpIndex = seededCount;
+	  seededCount++;
+	}
     }
-}	
-	
+}
+
 bool Graph::isLegal(int i, int j)
 {
   return i >= 0 && i < height && j >= 0 && j < width;
 }
-	
+
 int Graph::getNode(int i, int j)
 {
   if(!isLegal(i, j))
     return -1;
   return j + width * i;
 }
-	
+
 int Graph::getNeighbour(int i, int j, int dir)
-{		
+{
   switch(dir)
     {
     case 0: return getNode(i, j + 1);
@@ -165,7 +181,7 @@ int Graph::getNeighbour(int i, int j, int dir)
     default: return -1;
     }
 }
-	
+
 double Graph::calcProb(Pixel pixelA, Pixel pixelB)
 {
   int dR = (int)pixelA.R - (int)pixelB.R;
@@ -176,40 +192,28 @@ double Graph::calcProb(Pixel pixelA, Pixel pixelB)
   p = exp(-beta * p);
   return p;
 }
-	
+
 void Graph::createTransitions()
-{		
+{
   for (int i = 0; i < height; i++)
     {
       for (int j = 0; j < width; j++)
 	{
 	  int n = getNode(i, j);
-					
-	  int neigh = getNeighbour(i, j, 0);
-	  if (neigh >= 0)
+	  for(int k = 0; k < 4; k++)
 	    {
+	      int neigh = getNeighbour(i, j, k);
+	      if(neigh == -1)
+		 continue;
 	      double transition = calcProb(pixels[n], pixels[neigh]);
-	      nodes[n].transitions[0] = transition;
-	      nodes[n].neighbours[0] = &nodes[neigh];
-	      nodes[neigh].transitions[2] = transition;
-	      nodes[neigh].neighbours[2] = &nodes[n];
+	      nodes[n].transitions[k] = transition;
+	      nodes[n].neighbours[k] = &nodes[neigh];
 	    }
-					
-	  neigh = getNeighbour(i, j, 1);
-	  if (neigh >= 0)
-	    {
-	      double transition = calcProb(pixels[n], pixels[neigh]);
-	      nodes[n].transitions[1] = transition;
-	      nodes[n].neighbours[1] = &nodes[neigh];
-	      nodes[neigh].transitions[3] = transition;
-	      nodes[neigh].neighbours[3] = &nodes[n];
-	    }
-					
 	  nodes[n].calcDegree();
 	}
     }
 }
-	
+
 void Graph::reset()
 {
   for(int i = 0; i < height * width; i++)
@@ -217,7 +221,7 @@ void Graph::reset()
       nodes[i].reset();
     }
 }
-	
+
 void Graph::process(Mode mode, int itCount=0)
 {
   switch(mode)
@@ -229,49 +233,95 @@ void Graph::process(Mode mode, int itCount=0)
       directSolver();
       break;
     case Mode::randomWalks:
-      randomWalks();
+      randomWalks(itCount);
       break;
     }
 }
-	
-void Graph::randomWalks()
+
+void Graph::randomWalks(int itCount)
 {
-		
+
 }
-	
+
 void Graph::directSolver()
 {
-  SparseMatrix<double> lu(unseededPixelCount, unseededPixelCount);
-  lu.reserve(VectorXi::Constant(unseededPixelCount,5));
-  //		for each i,j such that v_ij != 0
-  //			lu.insert(i,j) = v_ij;
-  lu.makeCompressed();
-		
-  SparseMatrix<double> b(seededPixelCount, seededPixelCount);
-  b.reserve(VectorXi::Constant(seededPixelCount,5));
-  //		for each i,j such that v_ij != 0
-  //			b.insert(i,j) = v_ij;
-  b.makeCompressed();
+  SparseMatrix<double> L(unseededCount, unseededCount);
+  L.reserve(VectorXi::Constant(unseededCount,5));
+  for(int i = 0; i < height * width; i++)
+    {
+      if(nodes[i].isSeed)
+	continue;
+      for(int k = 0; k < 4; k++)
+	if(nodes[i].neighbours[k] != nullptr && !nodes[i].neighbours[k]->isSeed)
+	  L.insert(nodes[i].cmpIndex, nodes[i].neighbours[k]->cmpIndex) = -nodes[i].transitions[k];
+      L.insert(nodes[i].cmpIndex, nodes[i].cmpIndex) = nodes[i].degree;
+    }
+  L.makeCompressed();
+
+  SparseMatrix<double> B(seededCount, unseededCount);
+  B.reserve(VectorXi::Constant(seededCount,4));
+  for(int i = 0; i < height * width; i++)
+    {
+      if(nodes[i].isSeed)
+	for(int k = 0; k < 4; k++)
+	  if(nodes[i].neighbours[k] != nullptr && !nodes[i].neighbours[k]->isSeed)
+	    B.insert(nodes[i].cmpIndex, nodes[i].neighbours[k]->cmpIndex) = -nodes[i].transitions[k];
+    }
+  B.makeCompressed();
+
+  MatrixXd x(unseededCount, labelCount - 1);
+  MatrixXd xSeeds(seededCount, labelCount - 1);
+  for(int i = 0; i < height * width; i++)
+    {
+      for(int j = 0; j < labelCount - 1; j++)
+	{
+	  if(nodes[i].isSeed)
+	    xSeeds(nodes[i].cmpIndex, j) = nodes[i].label == j ? 1 : 0;
+	  else
+	    x(nodes[i].cmpIndex, j) = nodes[j].probabilities[j];
+	}
+    }
+
+  LeastSquaresConjugateGradient<SparseMatrix<double>> lscg;
+  lscg.setMaxIterations(128 * 128);
+  lscg.compute(L);
+  for(int i = 0; i < labelCount - 1; i++)
+    {
+      x.col(i) = lscg.solveWithGuess(-B.transpose() * xSeeds.col(i), x.col(i));
+      cout << "#iterations:     " << lscg.iterations() << endl;
+    }
+
+  for(int i = 0; i < height * width; i++)
+    {
+      if(nodes[i].isSeed)
+  	continue;
+      double total = 0;
+      for(int j = 0; j < labelCount - 1; j++)
+  	{
+  	  double p = x(nodes[i].cmpIndex, j);
+  	  nodes[i].probabilities[j] = p;
+  	  total += p;
+  	}
+      nodes[i].probabilities[labelCount - 1] = 1 - total;
+    }      
 }
-	
+
 void Graph::cellular(int itCount)
-{		
+{
   while (itCount-- > 0)
     {
       for (int i = 0; i < height * width; i++)
-	{
 	  nodes[i].update();
-	}
-			
+
       for (int i = 0; i < height * width; i++)
-	{
 	  nodes[i].swap();
-	}
     }
 }
-	
+
 vector<vector<int>> Graph::getSegImg()
 {
+  for(int i = 0; i < height * width; i++)
+    nodes[i].calcLabel();
   vector<vector<int>> px = vector<vector<int>>(height * width, vector<int>(4));
   for (int i = 0; i < height * width; i++)
     {
@@ -282,15 +332,17 @@ vector<vector<int>> Graph::getSegImg()
     }
   return px;
 }
-	
+
 vector<vector<int>> Graph::getSegImgChannel(int label)
-{		
+{
+  for(int i = 0; i < height * width; i++)
+    nodes[i].calcLabel();
   vector<vector<int>> px = vector<vector<int>>(height * width, vector<int>(4));
   for(int i = 0; i < height * width; i++)
     {
-      px[i][0] = labels[nodes[i].label].R;
-      px[i][1] = labels[nodes[i].label].G;
-      px[i][2] = labels[nodes[i].label].B;
+      px[i][0] = labels[label].R;
+      px[i][1] = labels[label].G;
+      px[i][2] = labels[label].B;
       px[i][3] = (int)(nodes[i].probabilities[label] * 255);
     }
   return px;
