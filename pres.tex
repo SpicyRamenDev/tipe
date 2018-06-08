@@ -1,0 +1,121 @@
+\documentclass{beamer}
+\usepackage{beamerthemeshadow}
+\setbeamertemplate{headline}{}
+\setbeamertemplate{footline}{}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{tikz}
+\usepackage[T1]{fontenc}
+\usepackage{setspace}
+\usepackage[utf8]{inputenc}
+\usepackage[french]{babel}
+\usepackage{pgffor}
+\usepackage{listings}
+\usepackage{stmaryrd}
+
+\title{Segmentation d'image par marches aléatoires}
+\date{}
+
+\begin{document}
+
+\frame{\titlepage}
+
+\section{I. Présentation du problème}
+\frame{\frametitle{Problème}
+
+  La \textbf{segmentation d'image} est un problème de vision par ordinateur qui consiste à \textbf{partitionner} une image donnée en différentes régions selon des \textbf{critères} prédéfinis.
+
+  \medskip{}
+  On s'intéresse ici au cas où \textbf{certains pixels sont étiquetés}, on cherche alors à attribuer une étiquette aux autres pixels.
+
+  On supposera de plus que les \textbf{objets} sont \textbf{homogènes} et \textbf{tous étiquetés}.
+
+  \bigskip
+  \begin{center}
+    \begin{tikzpicture}
+      \node[left] (test) at (0,0) {\includegraphics[width=3.5cm]{images/n_test}};
+      \node[left] (test) at (0,0) {\includegraphics[width=3.5cm]{images/stest}};
+      \draw[->] (0.5,0) -- (1.5,0);
+      \node[right] (test) at (2,0) {\includegraphics[width=3.5cm]{images/sptest}};
+    \end{tikzpicture}
+  \end{center}
+}
+
+
+\frame{\frametitle{Solution}
+  On va faire des \textbf{marches aléatoires} partant de chacun des pixels, et on retient l'étiquette du pixel sur lequel on retombe le plus souvent en premier.
+}
+
+\frame{\frametitle{Marches aléatoires}
+  On définit un graphe simple pondéré par
+  \begin{gather*}
+    V = \llbracket 0, H - 1 \rrbracket \times \llbracket 0, L - 1 \rrbracket \\
+    E = \{\,\{v_i,v_j\} \subseteq V \quad|\quad \Vert v_i-v_j\Vert = 1\,\} \\
+    \forall e_{ij} \in E,\, \omega_{ij} \in \mathbb{R}_+^*\quad, \quad
+    d_i = \sum_{e_{ij} \in E}\omega_{ij}
+  \end{gather*}
+
+  $\mbox{et } (S_n) \mbox{ une marche aléatoire telle que } \mathbb{P}[S_{n+1}=v_j | S_n=v_i] = \frac{\omega_{ij}}{d_i}$
+
+
+  \begin{center}
+    \begin{tikzpicture}
+      \filldraw[red] (1,1) rectangle (2,2);
+      \filldraw[orange] (1,0) rectangle (2,1);
+      \filldraw[green] (0,1) rectangle (1,2);
+      \filldraw[red] (1,2) rectangle (2,3);
+      \filldraw[magenta] (2,1) rectangle (3,2);
+      \draw (0,0) grid (3,3);
+      \draw[->] (1.5,1.5) -- (1.5,0.7);
+      \draw[->] (1.5,1.5) -- (1.5,2.7);
+      \draw[->] (1.5,1.5) -- (2.5,1.5);
+      \draw[->] (1.5,1.5) -- (1.3,1.5);
+    \end{tikzpicture}
+  \end{center}
+}
+
+
+\frame{\frametitle{t}
+  Soit $(S_n^i)$ une marche aléatoire partant de $v_i \in V$, on définit la v.a.
+  
+  $X_i = $ "étiquette du premier pixel étiqueté atteint"
+  
+  Alors \[\forall v_i \in V, \forall s \mbox{ étiquette},
+  \mathbb{P} [X = s] = \frac{\sum_{e_{ij}}{\omega_{ij}\mathbb{P}[X_j = s]}}{d_i}\]
+
+  \bigskip
+  Pour toute étiquette $s$, on cherche $f_s$ vérifiant
+  \[\forall v_i \in V,\quad f_s(v_i) = \frac{\sum_{e_{ij}}{\omega_{ij}\ f_s(v_j)}}{d_i}\]
+}
+
+
+\frame{\frametitle{}
+  \begin{block}{Propriétés}
+    \begin{itemize}
+    \item $\forall s$ étiquette, $f_s$ est unique
+    \item $\forall v_{ij} \in V ,\quad x_{ij} \in [0,1]$
+    \item $f_s$ est harmonique
+    \end{itemize}
+  \end{block}
+}
+
+
+\frame{\frametitle{}
+  \[
+    L_{ij} =
+    \begin{cases}
+      d_{ij} & \mbox{si } i = j \\
+      -w_{ij} & \mbox{si } i \neq j \\
+      0 & \mbox{sinon}
+    \end{cases}
+  \]
+}
+
+
+\end{document}
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
