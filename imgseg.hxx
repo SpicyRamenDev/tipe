@@ -10,7 +10,6 @@
 #include <math.h>
 
 using namespace std;
-// using namespace Eigen;
 
 struct Pixel
 {
@@ -67,11 +66,6 @@ class Graph
   int seededCount;
   int unseededCount;
 
-  // Eigen::MatrixXd x;
-  // Eigen::MatrixXd xSeeds;
-  // Eigen::SparseMatrix<double> B;
-  // Eigen::SparseMatrix<double> L;
-
   Graph() {}
   ~Graph() {}
 
@@ -84,13 +78,15 @@ class Graph
   int getNeighbour(int i, int j, int dir);
   double calcProb(Pixel pixelA, Pixel pixelB);
   void createTransitions();
+  void setBeta(double b);
   void reset();
   void process(Mode mode, int itCount);
   void randomWalks(int itCount);
-  void directSolver();
+  void directSolver(int itCount);
   void cellular(int itCount);
   vector<vector<int>> getSegImg();
   vector<vector<int>> getSegImgChannel(int label);
+  vector<vector<int>> getTrans();
 };
 
 

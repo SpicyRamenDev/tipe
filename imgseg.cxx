@@ -184,9 +184,9 @@ int Graph::getNeighbour(int i, int j, int dir)
 
 double Graph::calcProb(Pixel pixelA, Pixel pixelB)
 {
-  int dR = (int)pixelA.R - (int)pixelB.R;
-  int dG = (int)pixelA.G - (int)pixelB.G;
-  int dB = (int)pixelA.B - (int)pixelB.B;
+  int dR = pixelA.R - pixelB.R;
+  int dG = pixelA.G - pixelB.G;
+  int dB = pixelA.B - pixelB.B;
   double p = dR*dR + dG*dG + dB*dB;
   p /= 256 * 256;
   p = exp(-beta * p);
@@ -214,6 +214,12 @@ void Graph::createTransitions()
     }
 }
 
+void Graph::setBeta(double b)
+{
+  beta = b;
+  createTransitions();
+}
+
 void Graph::reset()
 {
   for(int i = 0; i < height * width; i++)
@@ -230,7 +236,7 @@ void Graph::process(Mode mode, int itCount=0)
       cellular(itCount);
       break;
     case Mode::directSolver:
-      directSolver();
+      directSolver(itCount);
       break;
     case Mode::randomWalks:
       randomWalks(itCount);
@@ -243,7 +249,7 @@ void Graph::randomWalks(int itCount)
 
 }
 
-void Graph::directSolver()
+void Graph::directSolver(int itCount)
 {
   SparseMatrix<double> L(unseededCount, unseededCount);
   L.reserve(VectorXi::Constant(unseededCount,5));
@@ -283,7 +289,7 @@ void Graph::directSolver()
     }
 
   LeastSquaresConjugateGradient<SparseMatrix<double>> lscg;
-  lscg.setMaxIterations(128 * 128);
+  lscg.setMaxIterations(itCount);
   lscg.compute(L);
   for(int i = 0; i < labelCount - 1; i++)
     {
@@ -347,3 +353,15 @@ vector<vector<int>> Graph::getSegImgChannel(int label)
     }
   return px;
 }
+
+vector<vector<int>> Graph::getTrans()
+{
+  vector<vector<int>> px = vector<vector<int>>(height * width, vector<int>(4));
+  for (int i = 0; i < height * width; i++)
+    {
+      px[i][0] = px[i][1] = px[i][2] = 255;
+      px[i][3] = (int)(255 * nodes[i].degree / labelCount);
+    }
+  return px;
+}
+  
