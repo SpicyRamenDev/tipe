@@ -7,14 +7,13 @@
 #include <string>
 #include <math.h>
 #include <cstring>
+#include <stdlib.h>
+#include <time.h>
 
 #include "imgseg.hxx"
 
 using namespace std;
 using namespace Eigen;
-
-
-mt19937 rng;
 
 
 class Graph;
@@ -113,9 +112,28 @@ void Node::swap()
   probabilities.swap(buffer);
 }
 
+Node* Node::randomNext()
+{
+  float r = (float) (rand()) / (float) (RAND_MAX);
+  Node *last = nullptr;
+  for(int i = 0; i < 4; i++)
+    {
+      if(neighbours[i] != nullptr)
+	{
+	  r -= transitions[i] / degree;
+	  if(r <= 0)
+	    return neighbours[i];
+	  last = neighbours[i];
+	}
+    }
+  return last;
+}
+
 Graph::Graph(int height, int width, double beta)
   :height(height), width(width), beta(beta)
 {
+  srand(time(NULL));
+  
   pixels = vector<Pixel>(height * width);
   nodes = vector<Node>(height * width);
   for(int i = 0; i < height * width; i++)
@@ -244,9 +262,23 @@ void Graph::process(Mode mode, int itCount=0)
     }
 }
 
+vector<int> Graph::randomWalk(int i, int j, int maxCount = 100000)
+{
+  vector<int> path;
+  int itCount = 0;
+  int n = getNode(i, j);
+  Node *node = &nodes[n];
+  while(!node->isSeed && itCount++ < maxCount)
+    {
+      path.push_back(node->index);
+      node = node->randomNext();
+    }
+  return path;
+}
+
 void Graph::randomWalks(int itCount)
 {
-
+  
 }
 
 void Graph::directSolver(int itCount)

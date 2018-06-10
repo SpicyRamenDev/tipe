@@ -38,6 +38,7 @@ struct Node
   void update();
   void calcLabel();
   void swap();
+  Node* randomNext();
 };
 
 
@@ -81,6 +82,7 @@ class Graph
   void setBeta(double b);
   void reset();
   void process(Mode mode, int itCount);
+  vector<int> randomWalk(int i, int j, int maxCount);
   void randomWalks(int itCount);
   void directSolver(int itCount);
   void cellular(int itCount);

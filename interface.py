@@ -18,7 +18,7 @@ def addnoise(filename, p=.25):
             pixels[i,j] = tuple(random.randrange(256) for _ in range(3)) + (int(256*p),)
     img.alpha_composite(noise)
     f = filename.split('/')
-    img.save('/'.join(f[:-1] + ['/n_' + f[-1]]))
+    img.save('/'.join(f[:-1] + ['n_' + f[-1]]))
     img.close()
 
 
@@ -36,7 +36,7 @@ class ImgSeg:
         self.graph.reset()
 
     def setBeta(self, beta):
-        pass
+        self.graph.setBeta(beta)
     
     def loadSeedsImg(self, filename):
         seeds = Image.open(filename)
@@ -77,6 +77,15 @@ class ImgSeg:
         seg = Image.new('RGBA', self.size)
         seg.putdata(self.graph.getTrans())
         return seg
+
+    def getRandomWalk(self, i, j, color, max=10000):
+        path = self.graph.randomWalk(i, j, max)
+        seg = Image.new('RGBA', self.size)
+        data = list(seg.getdata())
+        for n in path:
+            data[n] = color
+        seg.putdata(data)
+        return seg, len(path)
 
 
 def test():
