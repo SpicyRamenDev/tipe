@@ -28,17 +28,32 @@ class ImgSeg:
         source = Image.open(source)
         self.size = source.size
         self.width, self.height = self.size
-        self.graph = imgseg.Graph(self.height, self.width, beta)
-        self.graph.setImg(source.getdata())
-        source.close()
+        self.graph = imgseg.Graph(self.height, self.width, beta, False)
+        self.pixels = list(source.getdata())
+        self.graph.setImg(self.pixels)
+        source.close()       
 
     def reset(self):
         self.graph.reset()
 
     def setBeta(self, beta):
         self.graph.setBeta(beta)
+
+    def setFW(self, fw):
+        self.graph.setFW(fw)
     
     def loadSeedsImg(self, filename):
+        def mean(i):
+            x, y = i%self.width, i//self.height
+            c = 1
+            m = self.pixels[i][:3]
+            for dx,dy in [(0,1),(1,0),(-1,0),(-1,0)]:
+                if 0<=x+dx<self.height and 0<=y+dy<self.width:
+                    c += 1
+                    m = [m[j] + self.pixels[y+dy+(x+dx)*8][j] for j in range(3)]
+            m = [m[j] / c for j in range(3)]
+            return m
+        
         seeds = Image.open(filename)
         self.labels = [px[:3] for c, px in seeds.getcolors() if px[-1] != 0]
         self.seedsLbl = [0] * (self.height * self.width)
@@ -54,8 +69,8 @@ class ImgSeg:
                         self.seedsLbl[i] = lbl
                         break
 
-        self.graph.createTransitions()
         self.graph.setSeeds(self.labels, self.seedsLbl)
+        self.graph.createTransitions()
 
     def cellular(self, itCount):
         self.graph.cellular(itCount)

@@ -28,6 +28,22 @@ void Pixel::set(int r, int g, int b)
   B = b;
 }
 
+double Pixel::distSqr(Pixel p)
+{
+  double d = (R-p.R)*(R-p.R)+(G-p.G)*(G-p.G)+(B-p.B)*(B-p.B);
+  return d / (256 * 256);
+}
+
+double Pixel::dist(Pixel p)
+{
+  return sqrt(distSqr(p));
+}
+
+int Pixel::getBin()
+{
+  return R/32+(G/32)*8+(B/32)*64;
+}
+
 
 void Node::calcDegree()
 {
@@ -129,8 +145,8 @@ Node* Node::randomNext()
   return last;
 }
 
-Graph::Graph(int height, int width, double beta)
-  :height(height), width(width), beta(beta)
+Graph::Graph(int height, int width, double beta, bool isFW)
+  :height(height), width(width), beta(beta), isFW(isFW)
 {
   srand(time(NULL));
   
@@ -157,6 +173,14 @@ void Graph::setSeeds(vector<vector<int>> lbls, vector<int> seeds)
       labels[i].set(lbls[i][0], lbls[i][1], lbls[i][2]);
     }
 
+  for(int i = 0; i < 512; i++)
+    for(int j = 0; j < 512; j++)
+      {
+	double r = (i%8-j%8), g = ((i/8)%8-(j/8)%8), b = (i/64-j/64);
+	fw[i][j] = sqrt(r*r + g*g + b*b) / 7 * 224 / 256;
+      }
+
+  vector<vector<Pixel>> unseeded(labelCount);
   seededCount = 0;
   unseededCount = 0;
   for(int i = 0; i < height * width; i++)
@@ -172,8 +196,25 @@ void Graph::setSeeds(vector<vector<int>> lbls, vector<int> seeds)
 	{
 	  nodes[i].cmpIndex = seededCount;
 	  seededCount++;
+	  
+	  for(int j = 0; j < unseeded[seeds[i]].size(); j++)
+	    fw[pixels[i].getBin()][unseeded[seeds[i]][j].getBin()] =
+	      fw[unseeded[seeds[i]][j].getBin()][pixels[i].getBin()] = 0;
+	  unseeded[seeds[i]].push_back(pixels[i]);
 	}
     }
+  
+  for(int k = 0; k < 512; k++)
+    for(int i = 0; i < 512; i++)
+      for(int j = 0; j < 512; j++)
+	if(fw[i][j] > fw[i][k] + fw[k][j])
+	  fw[i][j] = fw[i][k] + fw[k][j];
+  
+  for(int i = 0; i < 512; i++)
+    for(int j = 0; j < 512; j++)
+      {
+	cout << fw[i][j] << " ";
+      }
 }
 
 bool Graph::isLegal(int i, int j)
@@ -202,11 +243,14 @@ int Graph::getNeighbour(int i, int j, int dir)
 
 double Graph::calcProb(Pixel pixelA, Pixel pixelB)
 {
-  int dR = pixelA.R - pixelB.R;
-  int dG = pixelA.G - pixelB.G;
-  int dB = pixelA.B - pixelB.B;
-  double p = dR*dR + dG*dG + dB*dB;
-  p /= 256 * 256;
+  double p;
+  if(!isFW)
+    p = pixelA.distSqr(pixelB);
+  else
+    {
+      p = fw[pixelA.getBin()][pixelB.getBin()];
+      p *= p;
+    }
   p = exp(-beta * p);
   return p;
 }
@@ -235,6 +279,12 @@ void Graph::createTransitions()
 void Graph::setBeta(double b)
 {
   beta = b;
+  createTransitions();
+}
+
+void Graph::setFW(bool b)
+{
+  isFW = b;
   createTransitions();
 }
 

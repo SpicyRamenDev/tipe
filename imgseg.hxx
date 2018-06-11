@@ -15,6 +15,9 @@ struct Pixel
 {
   int R, G, B;
   void set(int r, int g, int b);
+  double distSqr(Pixel p);
+  double dist(Pixel p);
+  int getBin();
 };
 
 
@@ -64,13 +67,16 @@ class Graph
   vector<Node> nodes;
   double beta;
 
+  double fw[512][512];
+  bool isFW;
+
   int seededCount;
   int unseededCount;
 
   Graph() {}
   ~Graph() {}
 
-  Graph(int height, int width, double beta);
+  Graph(int height, int width, double beta, bool isFW);
 
   void setImg(vector<vector<int>> px);
   void setSeeds(vector<vector<int>> lbls, vector<int> seeds);
@@ -80,6 +86,7 @@ class Graph
   double calcProb(Pixel pixelA, Pixel pixelB);
   void createTransitions();
   void setBeta(double b);
+  void setFW(bool b);
   void reset();
   void process(Mode mode, int itCount);
   vector<int> randomWalk(int i, int j, int maxCount);

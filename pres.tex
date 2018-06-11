@@ -338,6 +338,61 @@
 }
 
 
+\frame{\frametitle{Extension}
+  L'algorithme est très flexible :
+  \begin{itemize}
+  \item graphes : s'adapte à toutes sortes d'entrées (ex: images médicales 3D, classification de donées...).
+  \item la fonction heuristique $\omega$ peut être modifiée selon les besoins.
+  \end{itemize}
+
+  \textbf{Exemple} :
+
+  On peut implémenter une fonction $\omega$ qui prend en compte les différentes couleurs de chaque object.
+  
+  On considère le graphe complet RGB, sur lequel les poids sont initialisés selon la distance euclidienne. Puis on annule les arrêtes reliant deux pixels étiquetés par la même étiquette. Pour finir on applique Floyd-Warshall au graphe ainsi obtenu pour définir une nouvelle mesure de distance.
+}
+
+
+\frame{\frametitle{Extension}
+  \begin{tikzpicture}
+    \node at (0,0) {\includegraphics[height=3cm]{stripes2}};
+    \draw (-1.5,-1.5) rectangle (1.5,1.5);
+    \node at (3.5,0) {\includegraphics[height=3cm]{stripes2}};
+    \node at (3.5,0) {\includegraphics[height=3cm]{sstripes2}};
+    \draw (2,-1.5) rectangle (5,1.5);
+    \node at (7,0) {\includegraphics[height=3cm]{pstripes2}};
+    \draw (5.5,-1.5) rectangle (8.5,1.5);
+    
+    \node at (0,-4) {\includegraphics[height=3cm]{pen}};
+    \draw (-1.5,-5.5) rectangle (1.5,-2.5);
+    \node at (3.5,-4) {\includegraphics[height=3cm]{pen}};
+    \node at (3.5,-4) {\includegraphics[height=3cm]{spen}};
+    \draw (2,-5.5) rectangle (5,-2.5);
+    \node at (7,-4) {\includegraphics[height=3cm]{ppen}};
+    \draw (5.5,-5.5) rectangle (8.5,-2.5);
+  \end{tikzpicture}
+}
+
+
+\frame{\frametitle{Bibliographie}
+  \begin{thebibliography}{9}
+  \bibitem{rwmodernintro}
+    Gregory F. Lawler and Vlada Limic :
+    \textit{Random Walk: A Modern Introduction}
+    (2010)
+
+  \bibitem{rwforimgseg}
+    Leo Grady :
+    Random Walks for Image Segmentation, \textit{IEEE Trans. on Pattern Analysis and Machine Intelligence}, Vol. 28, No. 11, pp. 1768-1783, Nov., 2006.
+
+  \bibitem{rwelecnet}
+    Peter G. Doyle and J. Laurie Snell :
+    \textit{Random walks and electric networks}
+    (1984)
+  \end{thebibliography}
+}
+
+
 \end{document}
 %%% Local Variables:
 %%% mode: latex
